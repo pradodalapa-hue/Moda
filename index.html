@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HELENA - File System Interface</title>
+    <!-- Link para o Manifesto PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#020617">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <style>
+        :root {
+            --bg-primary: #020617; /* Deep Industrial Black */
+            --bg-secondary: #0f172a; /* Slate Gray */
+            --accent-cyan: #06b6d4; /* HELENA Cyan */
+            --accent-yellow: #fde047; /* SR. JOSÉ Yellow */
+            --text-light: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--bg-primary);
+            color: var(--text-light);
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* App Bar - Estilo Terminal de Comando */
+        .app-bar {
+            background: var(--bg-secondary);
+            padding: 18px 20px;
+            display: flex;
+            align-items: center;
+            border-bottom: 2px solid var(--accent-cyan);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 4px 20px rgba(6, 182, 212, 0.15);
+        }
+
+        .back-btn {
+            font-size: 20px;
+            cursor: pointer;
+            color: var(--accent-cyan);
+            transition: transform 0.2s;
+            background: none;
+            border: none;
+            outline: none;
+        }
+
+        .back-btn:active {
+            transform: scale(0.85);
+        }
+
+        #pathDisp {
+            margin-left: 20px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 13px;
+            color: var(--accent-yellow);
+            font-weight: bold;
+            letter-spacing: 0.5px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* Lista de Arquivos Industrial */
+        .file-list {
+            padding: 10px;
+            padding-bottom: 120px;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            margin-bottom: 8px;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(6, 182, 212, 0.1);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .file-item:active {
+            background: rgba(6, 182, 212, 0.15);
+            border-color: var(--accent-cyan);
+        }
+
+        .icon {
+            font-size: 24px;
+            margin-right: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .name {
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text-light);
+            flex-grow: 1;
+            word-break: break-all;
+        }
+
+        /* Floating Action Button (FAB) */
+        .fab-container {
+            position: fixed;
+            bottom: 30px;
+            right: 25px;
+            z-index: 9999;
+        }
+
+        .fab {
+            background: var(--accent-cyan);
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            color: var(--bg-primary);
+            box-shadow: 0 0 20px rgba(6, 182, 212, 0.4);
+            cursor: pointer;
+            transition: transform 0.2s, background-color 0.2s;
+            font-weight: bold;
+        }
+
+        .fab:active {
+            transform: scale(0.9) rotate(45deg);
+        }
+
+        .fab-menu {
+            display: none;
+            position: absolute;
+            bottom: 75px;
+            right: 0;
+            flex-direction: column;
+            gap: 12px;
+            width: 190px;
+            animation: slideUp 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fab-btn {
+            background: var(--bg-secondary);
+            border: 1px solid var(--accent-cyan);
+            color: var(--text-light);
+            padding: 14px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            transition: background 0.2s;
+        }
+
+        .fab-btn:active {
+            background: var(--accent-cyan);
+            color: var(--bg-primary);
+        }
+
+        /* Modais de Operação */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--bg-secondary);
+            width: 88%;
+            max-width: 400px;
+            padding: 24px;
+            border-radius: 12px;
+            border: 2px solid var(--accent-cyan);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            z-index: 10000;
+            animation: fadeIn 0.2s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translate(-50%, -45%); }
+            to { opacity: 1; transform: translate(-50%, -50%); }
+        }
+
+        h3 {
+            margin-top: 0;
+            color: var(--accent-yellow);
+            font-size: 18px;
+            letter-spacing: 1px;
+            border-bottom: 1px solid rgba(6, 182, 212, 0.3);
+            padding-bottom: 10px;
+        }
+
+        input, textarea {
+            width: 100%;
+            background: var(--bg-primary);
+            border: 1px solid rgba(6, 182, 212, 0.4);
+            color: white;
+            padding: 12px;
+            margin: 12px 0;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+
+        input:focus, textarea:focus {
+            border-color: var(--accent-cyan);
+            outline: none;
+            box-shadow: 0 0 8px rgba(6, 182, 212, 0.3);
+        }
+
+        .btn-primary {
+            background: var(--accent-cyan);
+            color: var(--bg-primary);
+            border: none;
+            padding: 14px;
+            width: 100%;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+
+        .btn-cancel {
+            background: transparent;
+            color: var(--accent-yellow);
+            border: 1px solid var(--accent-yellow);
+            padding: 10px;
+            width: 100%;
+            margin-top: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        /* Overlay de fundo escuro para modal */
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 9998;
+        }
+    </style>
+
+    <!-- JDP PWA METAS -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#bf953f">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="icon" sizes="192x192" href="https://raw.githubusercontent.com/pradodalapa-hue/fotos-industrial/main/img/jdp_1782285558672_1001254228.png">
+    <link rel="icon" sizes="512x512" href="https://raw.githubusercontent.com/pradodalapa-hue/fotos-industrial/main/img/jdp_1782285589574_1001254229.png">
+    <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/pradodalapa-hue/fotos-industrial/main/img/jdp_1782285558672_1001254228.png">
+</head>
+<body>
+
+    <div class="app-bar">
+        <button class="back-btn" onclick="goBack()">⟽</button>
+        <div id="pathDisp">/storage/emulated/0</div>
+    </div>
+
+    <div id="list" class="file-list"></div>
+
+    <div class="fab-container">
+        <div class="fab-menu" id="fabMenu">
+            <div class="fab-btn" onclick="openModal('folder')">📁 Nova Pasta</div>
+            <div class="fab-btn" onclick="openModal('text')">📄 Novo Texto</div>
+        </div>
+        <div class="fab" onclick="toggleMenu()">+</div>
+    </div>
+
+    <div class="overlay" id="overlay" onclick="closeModal()"></div>
+
+    <div id="modal" class="modal">
+        <h3 id="mTitle">CRIAR ELEMENTO</h3>
+        <input type="text" id="mName" placeholder="Nome do arquivo ou pasta...">
+        <textarea id="mText" style="display:none; height: 120px;" placeholder="Digite o conteúdo do arquivo de texto..."></textarea>
+        <button class="btn-primary" onclick="save()">EXECUTAR</button>
+        <button class="btn-cancel" onclick="closeModal()">CANCELAR</button>
+    </div>
+
+    
+
+    <!-- JDP SERVICE WORKER REGISTRATION -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').then(reg => console.log('SISTEMA JDP: MOTOR ATIVO'));
+            });
+        }
+    </script>
+</body>
+</html>
